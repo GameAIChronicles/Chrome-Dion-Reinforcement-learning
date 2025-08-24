@@ -78,7 +78,7 @@ GameOverPrediction.py → Captures a full-screen Chrome screenshot and checks if
 
 🖼 Screenshots
 
-Example:
+![image alt](https://github.com/GameAIChronicles/Chrome-Dion-Reinforcement-learning/blob/cff9d264c64e291e98e0f0e99400d9b8705c817c/Screenshot%202025-08-24%20070353.png)
 
 
 
