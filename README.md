@@ -121,3 +121,15 @@ Thanks to open-source resources and tutorials that inspired me to build this!
 
 
 ---
+
+ What I learned
+- Building custom Gymnasium environments from scratch
+- Connecting RL agents to real applications via screen capture
+- PPO training with Stable Baselines3
+- OCR-based game state detection without API access
+
+ Why this is hard
+Most RL projects use pre-built environments like CartPole.
+This one required building the full observation pipeline —
+capturing the screen, detecting game state via OCR, and 
+feeding that into the RL loop in real time.
