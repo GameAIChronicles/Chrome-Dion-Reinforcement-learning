@@ -1,11 +1,12 @@
 import time
 import numpy as np
 from gymnasium.spaces import Box, Discrete
-import pydirectinput
 import cv2 as cv
 from gymnasium import Env
-import screen_capture
-
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.common.exceptions import WebDriverException
 
 class ENVChromeDino(Env):
     def __init__(self):
@@ -13,20 +14,34 @@ class ENVChromeDino(Env):
         # 0 = jump, 1 = duck, 2 = nothing
         self.action_space = Discrete(3)  # Action
 
-        self.selected_title, self.selected_hwnd = screen_capture.select_window()
+        options = webdriver.ChromeOptions()
+        options.add_argument('--window-size=1200,600')
+        options.add_argument('--disable-backgrounding-occluded-windows')
+        options.add_argument('--disable-renderer-backgrounding')
+        options.add_argument('--disable-background-timer-throttling')
+        self.driver = webdriver.Chrome(options=options)
+        self.driver.execute_cdp_cmd("Emulation.setFocusEmulationEnabled", {"enabled": True})
+        self.driver.execute_cdp_cmd("Emulation.setDeviceMetricsOverride", {
+            "width": 1200, "height": 400, "deviceScaleFactor": 1, "mobile": False
+        })
+        try:
+            self.driver.get("chrome://dino")
+        except WebDriverException:
+            pass
+        self.game_body = self.driver.find_element(By.TAG_NAME, "body")
 
-        if self.selected_hwnd is None:
-            print("No window selected.")
-            raise ValueError("No window selected.")
-
-        self.game_location = {'top': 300, 'left': 20, 'width': 1350, 'height': 260}  # Position of the Character
-        self.done_loc = {'top': 330, 'left': 470, 'width': 200, 'height': 60}  # Position of Game Over
+        self.game_location = {'top': 90, 'left': 0, 'width': 1200, 'height': 250}  # Position of the Character
+        self.done_loc = {'top': 130, 'left': 380, 'width': 200, 'height': 50}  # Position of Game Over
 
     # Taking an action in the Env
     def step(self, action):
-        Action_map = {0 : 'space', 1 : 'down', 2 : 'nothing'}
-        if action != 2:
-            pydirectinput.press(Action_map[action])
+        # Action_map = {0 : 'space', 1 : 'down', 2 : 'nothing'}
+        # Action_map = {0: Keys.SPACE, 1: Keys.ARROW_DOWN, 2: 'nothing'}
+        if action == 0:
+            self.game_body.send_keys(Keys.SPACE)
+        elif action == 1:
+            self.game_body.send_keys(Keys.ARROW_DOWN)
+            print("Down pressed")
 
         reward = 1
         raw = self.capture()
@@ -42,9 +57,8 @@ class ENVChromeDino(Env):
 
     # Resetting the Env
     def reset(self, **kwargs):
-        time.sleep(0.2)
-        pydirectinput.click(x=150, y=150)
-        pydirectinput.press('space')
+        self.game_body.send_keys(Keys.SPACE)
+        time.sleep(1.5)
         raw = self.capture()
         return self.get_obs(raw), {}
 
@@ -90,20 +104,22 @@ class ENVChromeDino(Env):
         return False
 
     def capture(self):
-        #Send the selected window to the capture function -> numpy array back
-        capturer = screen_capture.WindowCapturer()
-        snapshot = capturer.capture_frame(self.selected_hwnd)
-        if snapshot is None:
-            print("Capture failed:", capturer.last_error)
-            print("The Window might be minimized.")
-        return snapshot
+        png = self.driver.get_screenshot_as_png()
+        return cv.imdecode(np.frombuffer(png, np.uint8), cv.IMREAD_COLOR)
 
     # Closing the window
     def close(self):
-        pass
+        self.driver.quit()
+
+
 
 
 if '__main__' == __name__:
     env = ENVChromeDino()
-    raw = env.capture()
-    env.GAME_OVER(raw)
+    env.reset()
+    done = False
+    for i in range(30):
+        if done:
+            env.reset()
+            done = False
+        _, _, done, _, _ = env.step(0)
