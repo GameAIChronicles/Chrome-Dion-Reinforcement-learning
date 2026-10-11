@@ -30,7 +30,7 @@ class ENVChromeDino(Env):
             pass
         self.game_body = self.driver.find_element(By.TAG_NAME, "body")
 
-        self.game_location = {'top': 90, 'left': 0, 'width': 1200, 'height': 250}  # Position of the Character
+        self.game_location = {'top': 90, 'left': 0, 'width': 800, 'height': 250}  # Position of the Character
         self.done_loc = {'top': 130, 'left': 380, 'width': 200, 'height': 50}  # Position of Game Over
 
     # Taking an action in the Env
@@ -41,7 +41,6 @@ class ENVChromeDino(Env):
             self.game_body.send_keys(Keys.SPACE)
         elif action == 1:
             self.game_body.send_keys(Keys.ARROW_DOWN)
-            print("Down pressed")
 
         reward = 1
         raw = self.capture()
@@ -57,8 +56,15 @@ class ENVChromeDino(Env):
 
     # Resetting the Env
     def reset(self, **kwargs):
-        self.game_body.send_keys(Keys.SPACE)
-        time.sleep(1.5)
+        time.sleep(1.5)  # game ignores restart for a while after a crash
+        for _ in range(5):
+            self.game_body.send_keys(Keys.SPACE)
+            time.sleep(0.3)
+            raw = self.capture()
+            if not self.GAME_OVER(raw):  # restart worked
+                break
+            time.sleep(0.5)  # still Game Over, so wait and try again
+        time.sleep(1.0)
         raw = self.capture()
         return self.get_obs(raw), {}
 
@@ -117,9 +123,16 @@ class ENVChromeDino(Env):
 if '__main__' == __name__:
     env = ENVChromeDino()
     env.reset()
-    done = False
-    for i in range(30):
+    steps = 0
+    for i in range(300):
+        _, _, done, _, _ = env.step(2)  # do nothing
+        steps += 1
         if done:
+            if steps == 1:
+                time.sleep(1.0)
+                still_over = env.GAME_OVER(env.capture())
+                print("episode length: 1 | still Game Over after 1 s:", still_over)
+            else:
+                print("episode length:", steps)
+            steps = 0
             env.reset()
-            done = False
-        _, _, done, _, _ = env.step(0)
